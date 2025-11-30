@@ -11,23 +11,42 @@ function callAPI($url) {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Tắt SSL verify nếu cần
+    
     $output = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
 
-    if ($output === false) {
-        $error = curl_error($ch);
+    if ($output === false || !empty($curlError)) {
         curl_close($ch);
-        return ["error" => $error, "code" => 500];
+        return [
+            "error" => "Lỗi kết nối: " . ($curlError ?: "Không thể kết nối đến API"),
+            "code" => 500
+        ];
     }
 
     curl_close($ch);
     $data = json_decode($output, true);
 
-    if ($httpCode !== 200 || !is_array($data)) {
+    if ($httpCode !== 200) {
+        $errorMsg = "Lỗi API";
+        if (is_array($data) && isset($data["message"])) {
+            $errorMsg = $data["message"];
+        } elseif (is_array($data) && isset($data["error"])) {
+            $errorMsg = $data["error"];
+        }
         return [
-            "error" => $data["message"] ?? "API lỗi",
+            "error" => $errorMsg . " (HTTP $httpCode)",
             "code" => $httpCode
+        ];
+    }
+
+    if (!is_array($data)) {
+        return [
+            "error" => "Dữ liệu trả về không hợp lệ",
+            "code" => 500
         ];
     }
 
@@ -49,10 +68,27 @@ $current  = callAPI($urlCurrent);
 $forecast = callAPI($urlForecast);
 
 // --- Kiểm tra lỗi ---
-if (isset($current["error"]) || isset($forecast["error"])) {
-    http_response_code($current["code"] ?? $forecast["code"] ?? 500);
+if (isset($current["error"])) {
+    http_response_code($current["code"] ?? 500);
     echo json_encode([
-        "error" => $current["error"] ?? $forecast["error"] ?? "Không lấy được dữ liệu"
+        "error" => $current["error"] ?? "Không lấy được dữ liệu thời tiết hiện tại"
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if (isset($forecast["error"])) {
+    http_response_code($forecast["code"] ?? 500);
+    echo json_encode([
+        "error" => $forecast["error"] ?? "Không lấy được dữ liệu dự báo"
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// Kiểm tra dữ liệu có đầy đủ không
+if (!isset($current["main"]) || !isset($current["weather"][0])) {
+    http_response_code(500);
+    echo json_encode([
+        "error" => "Dữ liệu thời tiết không đầy đủ"
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }

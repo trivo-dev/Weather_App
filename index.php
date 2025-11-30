@@ -63,24 +63,64 @@
       </div>
 
       <div class="details">
-        <span id="feels">Cảm giác: —</span>
-        <span id="humidity">Độ ẩm: —</span>
-        <span id="wind">Gió: —</span>
+        <div class="detail-item">
+          <i class="fas fa-thermometer-half"></i>
+          <span id="feels">Cảm giác: —</span>
+        </div>
+        <div class="detail-item">
+          <i class="fas fa-tint"></i>
+          <span id="humidity">Độ ẩm: —</span>
+        </div>
+        <div class="detail-item">
+          <i class="fas fa-wind"></i>
+          <span id="wind">Gió: —</span>
+        </div>
+        <div class="detail-item">
+          <i class="fas fa-compress-arrows-alt"></i>
+          <span id="pressure">Áp suất: —</span>
+        </div>
+        <div class="detail-item">
+          <i class="fas fa-eye"></i>
+          <span id="visibility">Tầm nhìn: —</span>
+        </div>
+        <div class="detail-item">
+          <i class="fas fa-cloud"></i>
+          <span id="clouds">Mây: —</span>
+        </div>
       </div>
 
-      <div id="suggestion" class="suggestion-box">Gợi ý trang phục: —</div>
-      <div id="reminder" class="reminder-box">Nhắc nhở: —</div>
+      <div id="suggestion" class="suggestion-box">
+        <i class="fas fa-tshirt"></i>
+        <span>Gợi ý trang phục: —</span>
+      </div>
+      <div id="reminder" class="reminder-box">
+        <i class="fas fa-bell"></i>
+        <span>Nhắc nhở: —</span>
+      </div>
     </div>
 
     <div class="current-right">
       <div class="meta">
-        <span id="date">—</span>
-        <span id="clock">—</span>
-        <span id="sun">Mặt trời mọc/lặn: —</span>
+        <div class="meta-item">
+          <i class="fas fa-calendar-alt"></i>
+          <span id="date">—</span>
+        </div>
+        <div class="meta-item">
+          <i class="fas fa-clock"></i>
+          <span id="clock">—</span>
+        </div>
+        <div class="meta-item">
+          <i class="fas fa-sun"></i>
+          <span id="sunrise">Mọc: —</span>
+        </div>
+        <div class="meta-item">
+          <i class="fas fa-moon"></i>
+          <span id="sunset">Lặn: —</span>
+        </div>
       </div>
 
       <div id="alerts" class="alerts" hidden>
-        <strong>Cảnh báo:</strong>
+        <strong><i class="fas fa-exclamation-triangle"></i> Cảnh báo:</strong>
         <ul id="alerts-list"></ul>
       </div>
     </div>
@@ -88,8 +128,14 @@
 
   <!-- Dự báo -->
   <section id="forecast" class="card">
-    <h3>3–5 ngày tới</h3>
+    <h3><i class="fas fa-calendar-week"></i> Dự báo 5 ngày tới</h3>
     <div id="forecast-list" class="forecast-list"></div>
+  </section>
+
+  <!-- Biểu đồ nhiệt độ -->
+  <section id="hourly-chart" class="card">
+    <h3><i class="fas fa-chart-line"></i> Biểu đồ nhiệt độ theo giờ</h3>
+    <canvas id="weatherChart" height="120"></canvas>
   </section>
 </main>
 
@@ -98,12 +144,6 @@
     <small>Nguồn dữ liệu: OpenWeather API — cần API key.</small>
   </div>
 </footer>
-
-<!-- Biểu đồ nhiệt độ -->
-<section id="hourly-chart" class="card">
-  <h3>Biểu đồ nhiệt độ theo giờ</h3>
-  <canvas id="weatherChart" height="120"></canvas>
-</section>
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -153,37 +193,25 @@ function updateChart(hourly) {
 }
 
 // ===============================
-// LIÊN KẾT VỚI FORM TÌM KIẾM
-
-document.getElementById("search-form").addEventListener("submit", function(e){
-    e.preventDefault();
-    const city = document.getElementById("city-input").value.trim();
-    if(city) {
-        loadHourlyWeather(city);
-    }
-});
+// LIÊN KẾT VỚI FORM TÌM KIẾM (chỉ cho biểu đồ)
+// Note: Form search chính được xử lý trong app.js
 
 // ===============================
-// NÚT “Vị trí của tôi” => Mặc định Quy Nhơn
-
-document.getElementById("geo-btn").addEventListener("click", () => {
-    loadHourlyWeather("Quy Nhon");
-});
-
-
-// AUTO UPDATE REAL-TIME
+// AUTO UPDATE REAL-TIME cho biểu đồ
 // Cập nhật mỗi 5 phút
 
 setInterval(() => {
-    const city = document.getElementById("location-name").textContent || "Quy Nhon";
-    loadHourlyWeather(city);
-    console.log("Biểu đồ đã cập nhật lúc", new Date().toLocaleTimeString());
+    const city = document.getElementById("location-name")?.textContent || "Hanoi";
+    if (city && city !== "—" && city !== "❌ Lỗi tải dữ liệu" && city !== "Đang tải...") {
+        loadHourlyWeather(city);
+        console.log("Biểu đồ đã cập nhật lúc", new Date().toLocaleTimeString());
+    }
 }, 300000); // 300.000 ms = 5 phút
 
-// Load mặc định
-loadHourlyWeather("Quy Nhon");
+// Load biểu đồ mặc định sau khi dữ liệu chính đã load
+// Sẽ được gọi từ app.js sau khi fetchWeather thành công
 </script>
 
-<script src="./asset/app.js"></script>
+<script src="./asset/app.js?v=2"></script>
 </body>
 </html>
