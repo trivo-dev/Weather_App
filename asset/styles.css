@@ -387,7 +387,7 @@ body {
 }
 
 .forecast-item::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -430,7 +430,8 @@ body {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -645,7 +646,8 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {
@@ -802,52 +804,52 @@ body {
     max-width: 100%;
     padding: 1em;
   }
-  
+
   .details {
     grid-template-columns: 1fr;
   }
-  
+
   .meta {
     grid-template-columns: 1fr;
   }
-  
+
   .forecast-list {
     grid-template-columns: 1fr;
   }
-  
+
   .temp {
     font-size: 2em;
   }
-  
+
   #location-name {
     font-size: 1.5em;
   }
-  
+
   .weather-icon {
     width: 80px;
     height: 80px;
   }
-  
+
   .current-weather {
     grid-template-columns: 1fr;
   }
-  
+
   .control-actions {
     flex-wrap: wrap;
   }
-  
+
   .search-form {
     flex-direction: column;
   }
-  
+
   .search-form input {
     width: 100%;
   }
-  
+
   .card {
     padding: 1.5em;
   }
-  
+
   .forecast-item {
     padding: 1em;
   }
