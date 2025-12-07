@@ -28,6 +28,8 @@
         <button type="submit" class="btn primary">Tìm</button>
         <ul id="suggestions" class="suggestions"></ul>
       </form>
+      <div id="search-feedback" class="search-feedback" hidden>
+    </div>
 
       <!-- Nút chức năng -->
       <div class="control-actions">

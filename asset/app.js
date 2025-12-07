@@ -714,24 +714,35 @@ async function fetchWeather(city) {
     } else {
       console.warn("⚠️ Hàm loadHourlyWeather không tồn tại");
     }
-  } catch (err) {
+} catch (err) {
     console.error("❌ Lỗi fetchWeather:", err);
     console.error("❌ Stack trace:", err.stack);
     hideLoading();
-    const friendlyMessage =
-      err?.message?.includes("city") || err?.message?.includes("thành phố")
-        ? "Không tìm thấy thành phố. Vui lòng thử lại."
-        : err?.message || "Không thể tải dữ liệu thời tiết. Vui lòng thử lại.";
 
+    // 1. Tạo thông báo lỗi thân thiện hơn
+    const cityNotFound = 
+        err?.message?.includes("city") || 
+        err?.message?.includes("thành phố") ||
+        err?.message?.includes("not found"); // Đảm bảo bắt được lỗi "not found" từ API
+
+    const friendlyMessage = cityNotFound
+      ? "Tên thành phố không hợp lệ. Vui lòng thử lại."
+      : err?.message || "Không thể tải dữ liệu thời tiết. Vui lòng thử lại.";
+
+    // 2. Logic giữ dữ liệu cũ và hiển thị lỗi
     if (currentWeatherData) {
-      // ĐÃ CÓ DỮ LIỆU CŨ → giữ nguyên card hiện tại, chỉ hiển thị thông báo dưới ô tìm kiếm
+      // ĐÃ CÓ DỮ LIỆU CŨ → Giữ nguyên UI, chỉ hiển thị thông báo dưới ô tìm kiếm (RẤT QUAN TRỌNG)
       showSearchFeedback(
         `${friendlyMessage} Đang hiển thị dữ liệu gần nhất.`,
         "error"
       );
+      
+      // Ở đây KHÔNG gọi displayError() để giữ lại dữ liệu cũ.
+
     } else {
-      // CHƯA TỪNG LOAD THÀNH CÔNG → không vẽ khung lỗi lớn, chỉ báo lỗi nhẹ
-      showSearchFeedback(friendlyMessage, "error");
+      // CHƯA TỪNG LOAD THÀNH CÔNG → Hiển thị lỗi toàn bộ UI và cũng hiển thị dưới ô tìm kiếm.
+      showSearchFeedback(friendlyMessage, "error", 0); // Hiển thị lỗi vĩnh viễn (duration=0)
+      displayError(friendlyMessage); 
     }
   }
 }
