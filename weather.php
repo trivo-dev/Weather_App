@@ -146,4 +146,3 @@ echo json_encode([
     "reminder"   => $reminder,
     "hourly"     => $hourly
 ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
- 

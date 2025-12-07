@@ -14,6 +14,11 @@
 
   <!-- CSS -->
   <link rel="stylesheet" href="asset/styles.css">
+   <!-- Chart.js -->
+ <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+ <!-- ApexCharts để vẽ biểu đồ xu hướng năm -->
+ <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
 
 <body>
@@ -139,6 +144,13 @@
     <h3><i class="fas fa-chart-line"></i> Biểu đồ nhiệt độ theo giờ</h3>
     <canvas id="weatherChart" height="120"></canvas>
   </section>
+
+   <!-- BIỂU ĐỒ XU HƯỚNG THEO THÁNG (Bổ sung) -->
+  <section id="trend-chart" class="card">
+<h3><i class="fas fa-chart-area"></i> Xu hướng thời tiết theo tháng</h3>
+ <!-- Không cần style="height: 350px;" vì đã set trong JS -->
+ <div id="yearChart"></div>
+ </section>
 </main>
 
 <footer class="app-footer">
@@ -212,6 +224,60 @@ setInterval(() => {
 
 // Load biểu đồ mặc định sau khi dữ liệu chính đã load
 // Sẽ được gọi từ app.js sau khi fetchWeather thành công
+</script>
+<script>
+var options = {
+    chart: {
+        type: "line",
+        height: 350,
+        toolbar: { show: false },
+        foreColor: "#160404ff"
+    },
+
+    series: [
+        {
+            name: "Nhiệt độ cao nhất (°C)",
+            data: [28, 30, 32, 34, 35, 36, 35, 34, 33, 31, 30, 29]
+        },
+        {
+            name: "Nhiệt độ thấp nhất (°C)",
+            data: [20, 21, 23, 25, 25, 26, 25, 24, 23, 22, 22, 21]
+        }
+    ],
+
+    xaxis: {
+        categories: ["Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12", "Th1"],
+        labels: { style: { colors: "#fff" } }
+    },
+
+    yaxis: {
+        labels: { style: { colors: "#fff" } }
+    },
+
+    stroke: { curve: "smooth", width: 3 },
+    colors: ["#ff6384", "#10afaaff"],
+
+    grid: {
+        borderColor: "rgba(255,255,255,0.1)"
+    },
+
+    legend: {
+        labels: { colors: "#fff" }
+    },
+
+    // 🌟 FIX TOOLTIP CHỮ MỜ
+    tooltip: {
+        theme: "light",
+        style: {
+            color: "#000"
+        }
+    }
+};
+
+var chart = new ApexCharts(document.querySelector("#yearChart"), options);
+chart.render();
+</script>
+
 </script>
 
 <script src="./asset/app.js?v=2"></script>
