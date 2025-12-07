@@ -112,6 +112,11 @@ let currentUnit = "C";
 // Biến lưu trữ dữ liệu thời tiết hiện tại
 let currentWeatherData = null;
 
+// Biến lưu trữ dữ liệu dự báo theo ngày và trạng thái lựa chọn
+let dailyForecastData = [];
+let selectedForecastContext = null;
+let searchFeedbackTimeoutId = null;
+
 // Hàm chuyển đổi từ Celsius sang Fahrenheit
 function celsiusToFahrenheit(celsius) {
   return (celsius * 9) / 5 + 32;
@@ -121,74 +126,53 @@ function celsiusToFahrenheit(celsius) {
 function updateTemperatureDisplay() {
   if (!currentWeatherData) return;
 
-  const current = currentWeatherData.current;
-  const unitSymbol = currentUnit === "C" ? "°C" : "°F";
+  const unitSymbol = getUnitSymbol();
 
-  // Cập nhật nhiệt độ hiện tại
-  let temp = current.main.temp;
-  if (currentUnit === "F") {
-    temp = celsiusToFahrenheit(temp);
-  }
-  const tempElement = document.getElementById("temp");
-  if (tempElement) {
-    tempElement.textContent = Math.round(temp) + unitSymbol;
-  }
+  if (!selectedForecastContext) {
+    const current = currentWeatherData.current;
+    if (!current) return;
 
-  // Cập nhật cảm giác như
-  let feelsLike = current.main.feels_like;
-  if (currentUnit === "F") {
-    feelsLike = celsiusToFahrenheit(feelsLike);
-  }
-  const feelsElement = document.getElementById("feels");
-  if (feelsElement) {
-    feelsElement.textContent =
-      "Cảm giác: " + Math.round(feelsLike) + unitSymbol;
-  }
+    const tempElement = document.getElementById("temp");
+    if (tempElement) {
+      const convertedTemp = convertTemperatureValue(current.main?.temp);
+      tempElement.textContent =
+        convertedTemp !== null ? convertedTemp + unitSymbol : "—";
+    }
 
-  // Cập nhật nhiệt độ dự báo
-  const forecastList = document.getElementById("forecast-list");
-  if (forecastList) {
-    const forecastItems = forecastList.querySelectorAll(".forecast-item");
-
-    // Lấy ngày hôm nay từ current weather
-    const today = new Date(currentWeatherData.current.dt * 1000);
-    const todayDateString = today.toLocaleDateString("vi-VN");
-
-    // Lọc bỏ ngày hôm nay và lấy các ngày tiếp theo
-    const daily = {};
-    currentWeatherData.forecast.list.forEach((item) => {
-      const itemDate = new Date(item.dt * 1000);
-      const itemDateString = itemDate.toLocaleDateString("vi-VN");
-
-      // Chỉ lấy các ngày sau ngày hôm nay
-      if (itemDateString !== todayDateString) {
-        if (itemDate.getTime() > today.getTime()) {
-          if (!daily[itemDateString]) {
-            daily[itemDateString] = item;
-          }
-        }
+    const feelsElement = document.getElementById("feels");
+    if (feelsElement) {
+      const convertedFeels = convertTemperatureValue(current.main?.feels_like);
+      feelsElement.textContent =
+        "Cảm giác: " +
+        (convertedFeels !== null ? convertedFeels + unitSymbol : "—");
+    }
+  } else if (selectedForecastContext.dayData) {
+    applyForecastSelection(
+      selectedForecastContext.dayData,
+      selectedForecastContext.index,
+      {
+        skipChart: true,
+        skipHighlight: true,
       }
-    });
-
-    // Lấy 5 ngày đầu tiên (từ ngày mai)
-    const dailyArray = Object.values(daily)
-      .sort((a, b) => a.dt - b.dt)
-      .slice(0, 5);
-
-    forecastItems.forEach((item, index) => {
-      if (dailyArray[index]) {
-        let forecastTemp = dailyArray[index].main.temp;
-        if (currentUnit === "F") {
-          forecastTemp = celsiusToFahrenheit(forecastTemp);
-        }
-        // Cập nhật nhiệt độ trong forecast item
-        const tempDiv = item.querySelector(".forecast-temp");
-        if (tempDiv) {
-          tempDiv.textContent = Math.round(forecastTemp) + unitSymbol;
-        }
-      }
-    });
+    );
+    updateChartForDay(selectedForecastContext.dayData.entries);
   }
+
+  const forecastItems = document.querySelectorAll(
+    "#forecast-list .forecast-item"
+  );
+  forecastItems.forEach((item, index) => {
+    const dayData = dailyForecastData[index];
+    if (!dayData || !dayData.representative?.main) return;
+    const tempDiv = item.querySelector(".forecast-temp");
+    if (tempDiv) {
+      const convertedValue = convertTemperatureValue(
+        dayData.representative.main.temp
+      );
+      tempDiv.textContent =
+        convertedValue !== null ? convertedValue + unitSymbol : "—";
+    }
+  });
 }
 // ==========================================================
 // KẾT THÚC LOGIC CHUYỂN ĐỔI ĐỘ C / ĐỘ F
@@ -260,7 +244,15 @@ function updateUI(data) {
   // Kiểm tra dữ liệu hợp lệ
   if (!data || !data.current) {
     console.error("❌ Dữ liệu không hợp lệ:", data);
-    displayError("Dữ liệu thời tiết không hợp lệ");
+    // Nếu đã có dữ liệu cũ thì giữ nguyên giao diện, chỉ báo lỗi nhỏ
+    if (currentWeatherData) {
+      showSearchFeedback(
+        "Không thể cập nhật dữ liệu mới. Đang hiển thị dữ liệu gần nhất.",
+        "error"
+      );
+    } else {
+      displayError("Dữ liệu thời tiết không hợp lệ");
+    }
     return;
   }
 
@@ -268,6 +260,7 @@ function updateUI(data) {
 
   // Lưu trữ dữ liệu thời tiết hiện tại để sử dụng cho chuyển đổi đơn vị
   currentWeatherData = data;
+  resetForecastSelectionState();
 
   // Đồng hồ
   function updateClock() {
@@ -286,7 +279,14 @@ function updateUI(data) {
 
   if (!current.weather || !current.weather[0]) {
     console.error("❌ Không có dữ liệu weather:", current);
-    displayError("Không có thông tin thời tiết");
+    if (currentWeatherData) {
+      showSearchFeedback(
+        "Không có thông tin thời tiết mới. Đang hiển thị dữ liệu gần nhất.",
+        "error"
+      );
+    } else {
+      displayError("Không có thông tin thời tiết");
+    }
     return;
   }
 
@@ -504,73 +504,60 @@ function updateUI(data) {
       return;
     }
 
-    // Lấy ngày hôm nay từ current weather
     const today = new Date(data.current.dt * 1000);
-    const todayDateString = today.toLocaleDateString("vi-VN");
+    dailyForecastData = groupForecastByDay(data.forecast.list, today);
 
-    // Lọc bỏ ngày hôm nay và lấy các ngày tiếp theo
-    const daily = {};
-    data.forecast.list.forEach((item) => {
-      const itemDate = new Date(item.dt * 1000);
-      const itemDateString = itemDate.toLocaleDateString("vi-VN");
+    if (!dailyForecastData.length) {
+      forecastList.innerHTML =
+        "<p style='text-align: center; color: var(--muted);'>Không có dữ liệu dự báo</p>";
+      return;
+    }
 
-      // Chỉ lấy các ngày sau ngày hôm nay
-      if (itemDateString !== todayDateString) {
-        // So sánh theo timestamp để đảm bảo là ngày mai trở đi
-        if (itemDate.getTime() > today.getTime()) {
-          if (!daily[itemDateString]) {
-            daily[itemDateString] = item;
-          }
-        }
-      }
-    });
+    console.log(
+      "📅 Số ngày forecast (không tính hôm nay):",
+      dailyForecastData.length
+    );
 
-    // Lấy 5 ngày đầu tiên (từ ngày mai)
-    const dailyArray = Object.values(daily)
-      .sort((a, b) => a.dt - b.dt) // Sắp xếp theo thời gian
-      .slice(0, 5);
-
-    console.log("📅 Số ngày forecast (không tính hôm nay):", dailyArray.length);
-    console.log("📅 Ngày hôm nay:", todayDateString);
-
-    dailyArray.forEach((item, index) => {
+    dailyForecastData.forEach((dayData, index) => {
       try {
-        const fIconUrl = `https://openweathermap.org/img/wn/${item.weather[0].icon}.png`;
-
-        // Chuyển đổi nhiệt độ theo đơn vị hiện tại
-        let forecastTemp = item.main.temp;
-        if (currentUnit === "F") {
-          forecastTemp = celsiusToFahrenheit(forecastTemp);
-        }
-
+        if (!dayData.representative) return;
+        const entry = dayData.representative;
+        const fIconUrl = `https://openweathermap.org/img/wn/${entry.weather[0].icon}.png`;
+        const forecastTemp = convertTemperatureValue(entry.main.temp);
+        const tempDisplay =
+          forecastTemp !== null
+            ? `${forecastTemp}${getUnitSymbol()}`
+            : "—";
         const el = document.createElement("div");
         el.classList.add("forecast-item");
-        const date = new Date(item.dt * 1000);
-        const dayName = date.toLocaleDateString("vi-VN", { weekday: "short" });
-        const dayMonth = date.toLocaleDateString("vi-VN", {
-          day: "numeric",
-          month: "short",
-        });
+        el.setAttribute("role", "button");
+        el.setAttribute("tabindex", "0");
+        el.dataset.index = index;
 
         el.innerHTML = `
-        <div class="forecast-day">${dayName}</div>
-        <div class="forecast-date">${dayMonth}</div>
+        <div class="forecast-day">${dayData.dayName}</div>
+        <div class="forecast-date">${dayData.dateLabel}</div>
         <img src="${fIconUrl}" alt="${
-          item.weather[0].description
+          entry.weather[0].description
         }" class="forecast-icon">
-        <div class="forecast-temp">${Math.round(
-          forecastTemp
-        )}${unitSymbol}</div>
-        <div class="forecast-desc">${item.weather[0].description}</div>
+        <div class="forecast-temp">${tempDisplay}</div>
+        <div class="forecast-desc">${entry.weather[0].description}</div>
         <div class="forecast-details">
-          <span><i class="fas fa-tint"></i> ${item.main.humidity}%</span>
+          <span><i class="fas fa-tint"></i> ${entry.main.humidity}%</span>
           <span><i class="fas fa-wind"></i> ${Math.round(
-            item.wind.speed || 0
+            entry.wind.speed || 0
           )} m/s</span>
         </div>
       `;
         forecastList.appendChild(el);
-        console.log(`✅ Đã thêm forecast item ${index + 1}:`, dayName);
+        el.addEventListener("click", () => handleForecastItemClick(index));
+        el.addEventListener("keyup", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            handleForecastItemClick(index);
+          }
+        });
+        console.log(`✅ Đã thêm forecast item ${index + 1}:`, dayData.dayName);
       } catch (e) {
         console.error(`❌ Lỗi khi tạo forecast item ${index + 1}:`, e);
       }
@@ -588,8 +575,12 @@ function updateUI(data) {
 function showLoading() {
   const locationName = document.getElementById("location-name");
   const temp = document.getElementById("temp");
-  if (locationName) locationName.textContent = "Đang tải...";
-  if (temp) temp.textContent = "—";
+  const hasSnapshot = !!currentWeatherData;
+  if (!hasSnapshot) {
+    if (locationName) locationName.textContent = "Đang tải...";
+    if (temp) temp.textContent = "—";
+  }
+  hideSearchFeedback();
 }
 
 // Ẩn loading
@@ -676,13 +667,23 @@ async function fetchWeather(city) {
     console.log("📥 Response status:", res.status, res.statusText);
     console.log("📥 Response headers:", res.headers);
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("❌ Response error text:", errorText);
-      throw new Error(`Lỗi kết nối server: ${res.status} ${res.statusText}`);
+    let data;
+    // Thử parse JSON kể cả khi HTTP status không phải 200 để lấy thông báo lỗi chi tiết
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      console.warn("⚠️ Không parse được JSON lỗi, dùng thông báo mặc định");
     }
 
-    const data = await res.json();
+    if (!res.ok) {
+      const serverMsg =
+        data && (data.error || data.message)
+          ? data.error || data.message
+          : `Lỗi kết nối server: ${res.status} ${res.statusText}`;
+      console.error("❌ Response error:", serverMsg);
+      throw new Error(serverMsg);
+    }
+
     console.log("✅ Dữ liệu nhận được:", data);
     console.log("✅ Current data:", data.current);
     console.log("✅ Forecast data:", data.forecast);
@@ -703,6 +704,7 @@ async function fetchWeather(city) {
     console.log("🎨 Bắt đầu cập nhật UI...");
     hideLoading();
     updateUI(data);
+    hideSearchFeedback();
     console.log("✅ UI đã được cập nhật!");
 
     // Load biểu đồ sau khi dữ liệu chính đã load
@@ -716,9 +718,21 @@ async function fetchWeather(city) {
     console.error("❌ Lỗi fetchWeather:", err);
     console.error("❌ Stack trace:", err.stack);
     hideLoading();
-    displayError(
-      err.message || "Không thể tải dữ liệu thời tiết. Vui lòng thử lại sau."
-    );
+    const friendlyMessage =
+      err?.message?.includes("city") || err?.message?.includes("thành phố")
+        ? "Không tìm thấy thành phố. Vui lòng thử lại."
+        : err?.message || "Không thể tải dữ liệu thời tiết. Vui lòng thử lại.";
+
+    if (currentWeatherData) {
+      // ĐÃ CÓ DỮ LIỆU CŨ → giữ nguyên card hiện tại, chỉ hiển thị thông báo dưới ô tìm kiếm
+      showSearchFeedback(
+        `${friendlyMessage} Đang hiển thị dữ liệu gần nhất.`,
+        "error"
+      );
+    } else {
+      // CHƯA TỪNG LOAD THÀNH CÔNG → không vẽ khung lỗi lớn, chỉ báo lỗi nhẹ
+      showSearchFeedback(friendlyMessage, "error");
+    }
   }
 }
 
@@ -734,4 +748,241 @@ async function fetchWeatherByCoords(lat, lon) {
     console.error("Lỗi:", err.message);
     displayError(err.message);
   }
+}
+
+// ===============================
+// HELPER & INTERACTION CHO FORECAST
+// ===============================
+
+function showSearchFeedback(message, type = "error", duration = 5000) {
+  const feedbackEl = document.getElementById("search-feedback");
+  if (!feedbackEl) return;
+  feedbackEl.textContent = message;
+  feedbackEl.classList.remove("is-error", "is-success");
+  if (type === "success") {
+    feedbackEl.classList.add("is-success");
+  } else {
+    feedbackEl.classList.add("is-error");
+  }
+  feedbackEl.hidden = false;
+  if (searchFeedbackTimeoutId) {
+    clearTimeout(searchFeedbackTimeoutId);
+  }
+  if (duration > 0) {
+    searchFeedbackTimeoutId = setTimeout(() => {
+      hideSearchFeedback();
+    }, duration);
+  }
+}
+
+function hideSearchFeedback() {
+  const feedbackEl = document.getElementById("search-feedback");
+  if (!feedbackEl) return;
+  feedbackEl.hidden = true;
+  feedbackEl.classList.remove("is-error", "is-success");
+  if (searchFeedbackTimeoutId) {
+    clearTimeout(searchFeedbackTimeoutId);
+    searchFeedbackTimeoutId = null;
+  }
+}
+
+function getUnitSymbol() {
+  return currentUnit === "C" ? "°C" : "°F";
+}
+
+function convertTemperatureValue(value) {
+  if (value === null || value === undefined || isNaN(value)) return null;
+  const converted =
+    currentUnit === "C" ? Number(value) : celsiusToFahrenheit(Number(value));
+  return Math.round(converted);
+}
+
+function groupForecastByDay(list, today) {
+  if (!Array.isArray(list) || !today) return [];
+  const dayBuckets = {};
+  const todayTime = today.getTime();
+
+  list.forEach((item) => {
+    if (!item?.dt) return;
+    const itemDate = new Date(item.dt * 1000);
+    if (itemDate.getTime() <= todayTime) return;
+    const dateKey = itemDate.toISOString().split("T")[0];
+    if (!dayBuckets[dateKey]) {
+      dayBuckets[dateKey] = [];
+    }
+    dayBuckets[dateKey].push(item);
+  });
+
+  return Object.keys(dayBuckets)
+    .sort()
+    .map((key) => {
+      const entries = dayBuckets[key].sort((a, b) => a.dt - b.dt);
+      const representative = findRepresentativeEntry(entries);
+      const dateObj = new Date(entries[0].dt * 1000);
+      return {
+        dateKey: key,
+        entries,
+        representative,
+        dayName: dateObj.toLocaleDateString("vi-VN", { weekday: "short" }),
+        dateLabel: dateObj.toLocaleDateString("vi-VN", {
+          day: "numeric",
+          month: "short",
+        }),
+        fullLabel: dateObj.toLocaleDateString("vi-VN", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }),
+      };
+    })
+    .slice(0, 5);
+}
+
+function findRepresentativeEntry(entries = []) {
+  if (!entries.length) return null;
+  const midday = entries.find((entry) => {
+    const hour = new Date(entry.dt * 1000).getHours();
+    return hour === 12;
+  });
+  return midday || entries[Math.floor(entries.length / 2)];
+}
+
+function handleForecastItemClick(index) {
+  if (!dailyForecastData[index]) return;
+  applyForecastSelection(dailyForecastData[index], index);
+}
+
+function applyForecastSelection(dayData, index, options = {}) {
+  if (!dayData?.representative) return;
+
+  selectedForecastContext = { dayData, index };
+
+  if (!options.skipHighlight) {
+    highlightForecastItem(index);
+  }
+
+  applySnapshotToMainCard(dayData.representative, {
+    dateLabel: dayData.fullLabel,
+    suffix: "Dự báo",
+  });
+
+  setChartLockState(true);
+
+  if (!options.skipChart) {
+    updateChartForDay(dayData.entries);
+  }
+}
+
+function highlightForecastItem(index) {
+  const forecastItems = document.querySelectorAll(
+    "#forecast-list .forecast-item"
+  );
+  forecastItems.forEach((item, idx) => {
+    item.classList.toggle("is-active", idx === index);
+  });
+}
+
+function updateChartForDay(entries = []) {
+  if (typeof updateChart !== "function" || !entries.length) return;
+  const unitSymbol = getUnitSymbol();
+  const hourlySeries = entries.map((item) => ({
+    time: new Date(item.dt * 1000).toLocaleTimeString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    temp:
+      convertTemperatureValue(item.main?.temp) ??
+      Math.round(item.main?.temp ?? 0),
+  }));
+  updateChart(hourlySeries, unitSymbol);
+}
+
+function applySnapshotToMainCard(entry, options = {}) {
+  if (!entry || !entry.main || !entry.weather) return;
+  const unitSymbol = getUnitSymbol();
+  const weatherInfo = entry.weather[0];
+
+  const tempEl = document.getElementById("temp");
+  if (tempEl && entry.main.temp !== undefined) {
+    const convertedTemp = convertTemperatureValue(entry.main.temp);
+    tempEl.textContent =
+      convertedTemp !== null ? convertedTemp + unitSymbol : "—";
+  }
+
+  const descEl = document.getElementById("desc");
+  if (descEl && weatherInfo?.description) {
+    descEl.textContent = weatherInfo.description;
+  }
+
+  const feelsEl = document.getElementById("feels");
+  if (feelsEl && entry.main.feels_like !== undefined) {
+    const convertedFeels = convertTemperatureValue(entry.main.feels_like);
+    feelsEl.textContent =
+      "Cảm giác: " +
+      (convertedFeels !== null ? convertedFeels + unitSymbol : "—");
+  }
+
+  const humidityEl = document.getElementById("humidity");
+  if (humidityEl && entry.main.humidity !== undefined) {
+    humidityEl.textContent = "Độ ẩm: " + entry.main.humidity + "%";
+  }
+
+  const windEl = document.getElementById("wind");
+  if (windEl) {
+    windEl.textContent =
+      "Gió: " +
+      Math.round(entry.wind?.speed || 0) +
+      " m/s" +
+      (entry.wind?.deg ? " (" + entry.wind.deg + "°)" : "");
+  }
+
+  const pressureEl = document.getElementById("pressure");
+  if (pressureEl && entry.main.pressure !== undefined) {
+    pressureEl.textContent = "Áp suất: " + entry.main.pressure + " hPa";
+  }
+
+  const visibilityEl = document.getElementById("visibility");
+  if (visibilityEl) {
+    const distance =
+      entry.visibility !== undefined && entry.visibility !== null
+        ? (entry.visibility / 1000).toFixed(1) + " km"
+        : "—";
+    visibilityEl.textContent = "Tầm nhìn: " + distance;
+  }
+
+  const cloudsEl = document.getElementById("clouds");
+  if (cloudsEl && entry.clouds?.all !== undefined) {
+    cloudsEl.textContent = "Mây: " + entry.clouds.all + "%";
+  }
+
+  const dateEl = document.getElementById("date");
+  if (dateEl && entry.dt) {
+    const label = options.dateLabel || formatFullDate(entry.dt * 1000);
+    dateEl.textContent = options.suffix ? `${label} (${options.suffix})` : label;
+  }
+
+  updateBackgroundAndIcon(entry);
+}
+
+function formatFullDate(timestamp) {
+  return new Date(timestamp).toLocaleDateString("vi-VN", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function resetForecastSelectionState() {
+  selectedForecastContext = null;
+  dailyForecastData = [];
+  const items = document.querySelectorAll("#forecast-list .forecast-item");
+  items.forEach((item) => item.classList.remove("is-active"));
+  setChartLockState(false);
+}
+
+function setChartLockState(locked) {
+  if (typeof window === "undefined") return;
+  window.chartLockedBySelection = !!locked;
 }
