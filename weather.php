@@ -99,7 +99,7 @@ $desc = strtolower($current["weather"][0]["description"] ?? "");
 $iconCode = $current["weather"][0]["icon"] ?? "01d"; // Trả icon code để front-end map
 
 // Gợi ý trang phục
-$suggestion = "Hôm nay thời tiết dễ chịu.";
+$suggestion = "Hôm nay thời tiết dễ chịu. Bạn có thể chọn trang phục tùy thích.";
 if (strpos($desc, "mưa") !== false) {
     $suggestion = "Trời có mưa, nhớ mang áo mưa hoặc ô ☔";
 } elseif ($temp < 20) {

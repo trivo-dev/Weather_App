@@ -847,7 +847,7 @@ function groupForecastByDay(list, today) {
         }),
       };
     })
-    .slice(0, 5);
+    .slice(1, 6);
 }
 
 function findRepresentativeEntry(entries = []) {
