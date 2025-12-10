@@ -997,3 +997,37 @@ function setChartLockState(locked) {
   if (typeof window === "undefined") return;
   window.chartLockedBySelection = !!locked;
 }
+// ===============================
+//   TÌM KIẾM BẰNG GIỌNG NÓI
+// ===============================
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const voiceStatus = document.getElementById("voice-status");
+
+if (!SpeechRecognition) {
+    voiceStatus.innerText = "❌ Trình duyệt của bạn không hỗ trợ tìm kiếm bằng giọng nói.";
+} else {
+    const recognition = new SpeechRecognition();
+    recognition.lang = "vi-VN";
+    recognition.interimResults = false;
+
+    const voiceBtn = document.getElementById("voice-btn");
+    const cityInput = document.getElementById("city-input");
+
+    voiceBtn.addEventListener("click", () => {
+        recognition.start();
+        voiceStatus.innerText = "🎤 Đang nghe... hãy nói tên thành phố";
+    });
+
+    recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        cityInput.value = text;
+        voiceStatus.innerHTML = `📌 Bạn đã nói: <b>"${text}"</b>`;
+
+        // Tự động gọi hàm tìm kiếm
+        document.getElementById("search-btn").click();
+    };
+
+    recognition.onerror = () => {
+        voiceStatus.innerText = "❌ Không nghe rõ, hãy thử lại.";
+    };
+}

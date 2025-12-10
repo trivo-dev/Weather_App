@@ -39,8 +39,10 @@
       <!-- Nút chức năng -->
       <div class="control-actions">
         <button id="geo-btn" class="btn">Vị trí của tôi</button>
-        <button id="notify-btn" class="btn">Bật thông báo</button>
-
+         <button id="voice-btn" class="icon-btn" title="Tìm kiếm bằng giọng nói">
+            🎤
+        </button>
+      <p id="voice-status" class="voice-status"></p>
         <div class="toggle">
           <input type="checkbox" id="unit-toggle" />
           <label for="unit-toggle" title="Chuyển °C / °F">
