@@ -1023,8 +1023,8 @@ if (!SpeechRecognition) {
         cityInput.value = text;
         voiceStatus.innerHTML = `📌 Bạn đã nói: <b>"${text}"</b>`;
 
-        // Tự động gọi hàm tìm kiếm
-        document.getElementById("search-btn").click();
+
+          
     };
 
     recognition.onerror = () => {

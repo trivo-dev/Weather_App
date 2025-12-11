@@ -137,7 +137,7 @@
 
   <!-- Dự báo -->
   <section id="forecast" class="card">
-    <h3><i class="fas fa-calendar-week"></i> Dự báo 4 ngày tới</h3>
+    <h3><i class="fas fa-calendar-week"></i> Dự báo 5 ngày tới</h3>
     <div id="forecast-list" class="forecast-list"></div>
   </section>
 
