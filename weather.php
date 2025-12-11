@@ -99,13 +99,13 @@ $desc = strtolower($current["weather"][0]["description"] ?? "");
 $iconCode = $current["weather"][0]["icon"] ?? "01d"; // Trả icon code để front-end map
 
 // Gợi ý trang phục
-$suggestion = "Hôm nay thời tiết dễ chịu. Bạn có thể chọn trang phục tùy thích.";
+$suggestion = "Hôm nay thời tiết khá dễ chịu, bạn cứ thoải mái chọn trang phục mình thích.";
 if (strpos($desc, "mưa") !== false) {
-    $suggestion = "Trời có mưa, nhớ mang áo mưa hoặc ô ☔";
+    $suggestion = "Trời sắp mưa, nhớ mang theo áo mưa hoặc ô để tránh ướt nhé☔";
 } elseif ($temp < 20) {
-    $suggestion = "Trời lạnh, nên mặc áo khoác ấm 🧥";
+    $suggestion = "Trời lạnh, mặc áo khoác ấm nhé 🧥";
 } elseif ($temp > 32) {
-    $suggestion = "Trời nóng, mặc đồ thoáng mát 👕 và uống nhiều nước 💧";
+    $suggestion = "Trời nóng, mặc đồ thoáng mát 👕 và uống nhiều nước  💧";
 }
 
 // Nhắc nhở ngày mai
@@ -115,14 +115,14 @@ if (!empty($forecast["list"]) && isset($forecast["list"][8])) {
     $tomorrowTemp = $forecast["list"][8]["main"]["temp"] ?? null;
 
     $reminderArr = [];
-    if (strpos($tomorrowDesc, "mưa") !== false) $reminderArr[] = "Ngày mai có mưa, nhớ mang ô nhé ☔";
-    if (strpos($tomorrowDesc, "nắng") !== false) $reminderArr[] = "Ngày mai trời nắng, bôi kem chống nắng 🌞";
+    if (strpos($tomorrowDesc, "mưa") !== false) $reminderArr[] = "Ngày mai có mưa, bạn nhớ mang ô nhé ☔";
+    if (strpos($tomorrowDesc, "nắng") !== false) $reminderArr[] = "Ngày mai trời nắng, bôi kem chống nắng nhé 🌞";
     if ($tomorrowTemp !== null) {
-        if ($tomorrowTemp <= 10) $reminderArr[] = "Ngày mai lạnh, mang áo ấm 🧥";
-        if ($tomorrowTemp >= 35) $reminderArr[] = "Ngày mai nóng, uống nhiều nước 💧";
+        if ($tomorrowTemp <= 10) $reminderArr[] = "Ngày mai lạnh, mang áo ấm vào nha 🧥";
+        if ($tomorrowTemp >= 35) $reminderArr[] = "Ngày mai nóng, uống nhiều nước nhé 💧";
     }
 
-    $reminder = !empty($reminderArr) ? implode(" | ", $reminderArr) : "Ngày mai thời tiết khá ổn ✅";
+    $reminder = !empty($reminderArr) ? implode(" | ", $reminderArr) :" Ngày mai thời tiết thuận lợi ✅";
 }
 
 // Dữ liệu hourly chart (8 mốc tiếp theo ~24h)
